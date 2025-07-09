@@ -35,7 +35,13 @@
    - 检测并报告任何代码块（学术论文中不应包含）
    - 包括围栏代码块、行内代码和缩进代码块
 
-7. **参考文献真实性验证**
+7. **引用数量统计**
+   - 统计论文中的独立引用数量
+   - 根据学术标准检查（默认：15个以上引用）
+   - 提供智能警告和上下文感知的建议
+   - 处理各种论文类型和特殊要求
+
+8. **参考文献真实性验证**
    - 通过Google Serper API搜索验证参考文献是否真实存在
    - 检查bib文件格式和完整性
    - 提供验证统计
@@ -134,13 +140,19 @@ uv run mcp-paper-verification
 - **参数**：
   - `md_file_path`: Markdown论文文件路径
 
-#### 4. `verify_bib_references_only`
+#### 4. `verify_reference_count_only`
+仅检查引用数量统计：
+- **参数**：
+  - `md_file_path`: Markdown论文文件路径
+  - `min_references`: 建议的最少引用数量（默认：15）
+
+#### 5. `verify_bib_references_only`
 仅验证参考文献真实性：
 - **参数**：
   - `bib_file_path`: BibTeX文件路径
   - `serper_api_key`: Serper API密钥（可选）
 
-#### 5. `health_check`
+#### 6. `health_check`
 健康检查服务状态
 
 ## 示例使用
@@ -170,6 +182,7 @@ uv run mcp-paper-verification
 ✅ **表达多样性**：避免过度使用模板化表达  
 ✅ **格式规范**：数学公式使用标准LaTeX语法  
 ✅ **引用规范**：使用`[@key]`格式且在bib文件中存在  
+✅ **引用数量**：适当的引用数量（完整论文通常需要15个以上）  
 ✅ **资源完整**：图片使用绝对路径且文件存在  
 ✅ **内容纯净**：不包含代码块等无关内容  
 ✅ **参考可靠**：引用的文献真实存在且可验证  

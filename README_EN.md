@@ -39,7 +39,13 @@ A comprehensive academic paper verification MCP server that analyzes Markdown-fo
    - Detects and reports any code blocks (inappropriate for academic papers)
    - Includes fenced code blocks, inline code, and indented code blocks
 
-7. **Reference Authenticity Verification**
+7. **Reference Count Statistics**
+   - Counts unique citations in the paper
+   - Checks against academic standards (default: 15+ references)
+   - Provides intelligent warnings and context-aware suggestions
+   - Handles various paper types and special requirements
+
+8. **Reference Authenticity Verification**
    - Uses Google Serper API to verify reference authenticity
    - Validates BibTeX file format and completeness
    - Provides verification statistics
@@ -137,13 +143,19 @@ Check stereotype expressions only:
 - **Parameters**:
   - `md_file_path`: Path to Markdown paper file
 
-#### 4. `verify_bib_references_only`
+#### 4. `verify_reference_count_only`
+Check reference count statistics only:
+- **Parameters**:
+  - `md_file_path`: Path to Markdown paper file
+  - `min_references`: Suggested minimum reference count (default: 15)
+
+#### 5. `verify_bib_references_only`
 Verify reference authenticity only:
 - **Parameters**:
   - `bib_file_path`: Path to BibTeX file
   - `serper_api_key`: Serper API key (optional)
 
-#### 5. `health_check`
+#### 6. `health_check`
 Service health check
 
 ## 💡 Example Usage
@@ -173,6 +185,7 @@ The verification returns:
 ✅ **Expression Diversity**: Avoid overuse of template expressions  
 ✅ **Format Standards**: Mathematical formulas using proper LaTeX syntax  
 ✅ **Citation Standards**: Use `[@key]` format with entries in bib file  
+✅ **Reference Quantity**: Adequate number of citations (typically 15+ for full papers)  
 ✅ **Resource Integrity**: Images using absolute paths with existing files  
 ✅ **Content Purity**: No code blocks or unrelated content  
 ✅ **Reference Reliability**: Citations to real, verifiable literature  
