@@ -163,7 +163,8 @@ async def test_individual_checks(md_file_path, bib_file_path):
         from mcp_paper_verification.server import (
             verify_sparse_content_only,
             verify_stereotype_content_only,
-            verify_bib_references_only
+            verify_bib_references_only,
+            verify_reference_count_only
         )
         from mcp.server.fastmcp import Context
         
@@ -185,6 +186,20 @@ async def test_individual_checks(md_file_path, bib_file_path):
         else:
             print(f"    ❌ 刻板印象检查失败: {stereotype_result['error']}")
         
+        # 测试引用数量检查
+        print("\n  📊 测试引用数量检查...")
+        ref_count_result = await verify_reference_count_only(ctx, md_file_path)
+        if ref_count_result['status'] == 'success':
+            result = ref_count_result['result']
+            print(f"    ✅ 引用数量检查完成")
+            print(f"    📈 唯一引用: {result['unique_citations']}")
+            print(f"    📈 总引用次数: {result['total_citations']}")
+            print(f"    📈 达到标准: {result['meets_standard']}")
+            if result['warnings']:
+                print(f"    ⚠️ 警告: {len(result['warnings'])} 项")
+        else:
+            print(f"    ❌ 引用数量检查失败: {ref_count_result['error']}")
+        
         # 测试参考文献检查（如果有Serper API密钥）
         if os.getenv('SERPER_API_KEY'):
             print("\n  📚 测试参考文献验证...")
@@ -199,6 +214,47 @@ async def test_individual_checks(md_file_path, bib_file_path):
         return True
     except Exception as e:
         print(f"❌ 单独检查测试失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def test_reference_count_only(md_file_path):
+    """测试引用数量检查功能"""
+    print("📊 测试引用数量检查功能...")
+    
+    try:
+        from mcp_paper_verification.server import verify_reference_count_only
+        from mcp.server.fastmcp import Context
+        
+        ctx = Context()
+        
+        # 使用测试文件
+        result = await verify_reference_count_only(ctx, md_file_path, min_references=15)
+        
+        if result['status'] == 'success':
+            print("✅ 引用数量检查完成")
+            
+            ref_result = result['result']
+            print(f"📈 唯一引用数量: {ref_result['unique_citations']}")
+            print(f"📈 总引用次数: {ref_result['total_citations']}")
+            print(f"📈 建议最少引用: {ref_result['min_expected']}")
+            print(f"📈 是否达标: {'✅ 是' if ref_result['meets_standard'] else '⚠️ 否'}")
+            
+            if ref_result['warnings']:
+                print("\n⚠️ 警告信息:")
+                for warning in ref_result['warnings']:
+                    print(f"  - {warning}")
+            
+            print(f"\n💡 建议: {ref_result['suggestion']}")
+            
+            return True
+        else:
+            print(f"❌ 引用数量检查失败: {result['error']}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ 引用数量检查异常: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -253,7 +309,7 @@ def cleanup_files(*file_paths):
 async def main():
     """主测试函数"""
     parser = argparse.ArgumentParser(description='测试MCP Paper Verification服务')
-    parser.add_argument('--test', choices=['health', 'comprehensive', 'individual', 'direct', 'all'],
+    parser.add_argument('--test', choices=['health', 'comprehensive', 'individual', 'reference_count', 'direct', 'all'],
                        default='all', help='选择要运行的测试')
     parser.add_argument('--md-file', help='使用指定的MD文件进行测试')
     parser.add_argument('--bib-file', help='使用指定的BIB文件进行测试')
@@ -299,6 +355,11 @@ async def main():
             print("\n" + "="*50)
             result = await test_individual_checks(md_file_path, bib_file_path)
             test_results.append(('单独检查', result))
+        
+        if args.test in ['reference_count', 'all']:
+            print("\n" + "="*50)
+            result = await test_reference_count_only(md_file_path)
+            test_results.append(('引用数量检查', result))
         
         if args.test in ['direct', 'all']:
             print("\n" + "="*50)

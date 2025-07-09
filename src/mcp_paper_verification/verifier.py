@@ -421,6 +421,51 @@ class PaperVerifier:
             "issues": issues
         }
     
+    def verify_reference_count(self, content: str, min_references: int = 15) -> Dict[str, Any]:
+        """检查引用数量是否符合学术论文标准"""
+        
+        # 查找所有引用
+        citation_pattern = r'\[@([^\]]+)\]'
+        citations = re.findall(citation_pattern, content)
+        unique_citations = len(set(citations))
+        total_citations = len(citations)
+        
+        issues = []
+        warnings = []
+        
+        # 生成引用统计信息
+        if unique_citations == 0:
+            warnings.append("论文中未发现任何文献引用")
+        elif unique_citations < min_references:
+            warnings.append(f"论文包含 {unique_citations} 个独立引用，少于建议的 {min_references} 个")
+        
+        # 添加具体的引用分析
+        if total_citations != unique_citations:
+            duplicate_count = total_citations - unique_citations
+            warnings.append(f"发现 {duplicate_count} 个重复引用")
+        
+        # 注意：这里不直接判定为"错误"，而是提供信息供LLM判断
+        return {
+            "has_issues": False,  # 不直接判定为错误，让LLM根据上下文判断
+            "issues": issues,
+            "warnings": warnings,
+            "unique_citations": unique_citations,
+            "total_citations": total_citations,
+            "meets_standard": unique_citations >= min_references,
+            "min_expected": min_references,
+            "suggestion": self._get_reference_count_suggestion(unique_citations, min_references)
+        }
+    
+    def _get_reference_count_suggestion(self, unique_count: int, min_expected: int) -> str:
+        """生成引用数量相关的建议"""
+        if unique_count == 0:
+            return "请检查学生的任务要求是否需要包含文献引用。如果是完整学术论文，建议添加相关文献支撑观点。"
+        elif unique_count < min_expected:
+            return (f"当前引用数量 ({unique_count}) 低于一般学术论文标准 ({min_expected})。"
+                   f"请确认：1) 是否为完整论文？2) 学生是否有特殊要求？3) 论文类型是否需要大量引用？")
+        else:
+            return "引用数量符合学术论文标准。"
+
     def verify_bib_references(self, bib_file_path: str) -> Dict[str, Any]:
         """验证bib文件中的参考文献真实性"""
         
@@ -519,6 +564,7 @@ async def verify_paper(md_file_path: str, bib_file_path: Optional[str] = None,
             "stereotype_content": verifier.verify_stereotype_content(content),
             "latex_formulas": verifier.verify_latex_formulas(content),
             "citations": verifier.verify_citations(content, bib_file_path),
+            "reference_count": verifier.verify_reference_count(content),
             "images": verifier.verify_images(content, md_file_path),
             "code_blocks": verifier.verify_code_blocks(content),
         }
@@ -598,9 +644,28 @@ def generate_report(verification_results: Dict[str, Any]) -> str:
         report += "**状态**: ✅ 通过\n"
     report += f"**引用数量**: {citations['citations_found']} (唯一: {citations['unique_citations']})\n\n"
     
-    # 5. 图片检查
+    # 5. 引用数量统计
+    ref_count = results["reference_count"]
+    report += "## 5. 引用数量统计\n\n"
+    
+    # 显示统计信息
+    report += f"**唯一引用数量**: {ref_count['unique_citations']}\n"
+    report += f"**总引用次数**: {ref_count['total_citations']}\n"
+    report += f"**建议最少引用**: {ref_count['min_expected']}\n"
+    report += f"**是否达标**: {'✅ 是' if ref_count['meets_standard'] else '⚠️ 否'}\n\n"
+    
+    # 显示警告和建议
+    if ref_count["warnings"]:
+        report += "**⚠️ 注意事项**:\n"
+        for warning in ref_count["warnings"]:
+            report += f"- {warning}\n"
+        report += "\n"
+    
+    report += f"**💡 建议**: {ref_count['suggestion']}\n\n"
+    
+    # 6. 图片检查
     images = results["images"]
-    report += "## 5. 图片链接检查\n\n"
+    report += "## 6. 图片链接检查\n\n"
     if images["has_issues"]:
         report += "**状态**: ❌ 发现问题\n\n"
         for issue in images["issues"]:
@@ -609,9 +674,9 @@ def generate_report(verification_results: Dict[str, Any]) -> str:
         report += "**状态**: ✅ 通过\n"
     report += f"**图片数量**: {images['images_found']}\n\n"
     
-    # 6. 代码块检查
+    # 7. 代码块检查
     code_blocks = results["code_blocks"]
-    report += "## 6. 代码块检查\n\n"
+    report += "## 7. 代码块检查\n\n"
     if code_blocks["has_issues"]:
         report += "**状态**: ❌ 发现问题\n\n"
         for issue in code_blocks["issues"]:
@@ -620,10 +685,10 @@ def generate_report(verification_results: Dict[str, Any]) -> str:
         report += "**状态**: ✅ 通过\n"
     report += "\n"
     
-    # 7. bib文件验证
+    # 8. bib文件验证
     if "bib_references" in results:
         bib_refs = results["bib_references"]
-        report += "## 7. bib文件参考文献验证\n\n"
+        report += "## 8. bib文件参考文献验证\n\n"
         if bib_refs["has_issues"]:
             report += "**状态**: ❌ 发现问题\n\n"
             for issue in bib_refs["issues"]:

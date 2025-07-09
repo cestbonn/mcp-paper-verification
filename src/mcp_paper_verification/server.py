@@ -86,6 +86,7 @@ async def verify_paper_comprehensive(
                 "stereotype_content": results["stereotype_content"]["has_issues"],
                 "latex_formulas": results["latex_formulas"]["has_issues"],
                 "citations": results["citations"]["has_issues"],
+                "reference_count": results["reference_count"]["has_issues"],
                 "images": results["images"]["has_issues"],
                 "code_blocks": results["code_blocks"]["has_issues"],
                 "bib_references": results.get("bib_references", {}).get("has_issues", False)
@@ -228,6 +229,53 @@ async def verify_bib_references_only(
             "status": "error",
             "error": str(e),
             "bib_file_path": bib_file_path
+        }
+
+
+@mcp.tool()
+async def verify_reference_count_only(
+    ctx: Context,
+    md_file_path: str,
+    min_references: int = 15
+) -> Dict[str, Any]:
+    """
+    仅验证论文的引用数量统计
+    
+    Args:
+        md_file_path: Markdown格式论文文件的路径
+        min_references: 建议的最少引用数量（默认15）
+    
+    Returns:
+        Dict: 引用数量验证结果
+    """
+    
+    try:
+        if not os.path.exists(md_file_path):
+            return {
+                "status": "error",
+                "error": f"文件不存在: {md_file_path}"
+            }
+        
+        with open(md_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        from mcp_paper_verification.verifier import PaperVerifier
+        verifier = PaperVerifier()
+        result = verifier.verify_reference_count(content, min_references)
+        
+        return {
+            "status": "success",
+            "md_file_path": md_file_path,
+            "min_references_setting": min_references,
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"引用数量验证失败: {str(e)}", exc_info=True)
+        return {
+            "status": "error",
+            "error": str(e),
+            "md_file_path": md_file_path
         }
 
 
