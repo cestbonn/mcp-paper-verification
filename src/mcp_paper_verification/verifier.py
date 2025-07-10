@@ -305,11 +305,22 @@ class PaperVerifier:
         
         issues = []
         
-        # 查找所有引用
+        # 查找所有引用（包括连续引用）
         citation_pattern = r'\[@([^\]]+)\]'
-        citations = re.findall(citation_pattern, content)
+        citation_matches = re.findall(citation_pattern, content)
         
-        if not citations:
+        # 解析连续引用，分割成单独的引用key
+        all_citations = []
+        for match in citation_matches:
+            # 分割连续引用 (用分号、逗号或@符号分隔)
+            # 例如: "baron1986moderator; @preacher2008asymptotic" -> ["baron1986moderator", "preacher2008asymptotic"]
+            keys = re.split(r'[;,]\s*@?|\s+@', match)
+            for key in keys:
+                key = key.strip().lstrip('@')  # 移除前导空格和@符号
+                if key:  # 非空key
+                    all_citations.append(key)
+        
+        if not all_citations:
             return {
                 "has_issues": False,
                 "issues": [],
@@ -337,7 +348,7 @@ class PaperVerifier:
                 bib_db = bibtexparser.loads(bib_content)
                 bib_keys = set(bib_db.entries_dict.keys())
                 
-                for citation in citations:
+                for citation in all_citations:
                     if citation not in bib_keys:
                         issues.append(f"引用 [@{citation}] 在bib文件中不存在")
                         
@@ -347,8 +358,8 @@ class PaperVerifier:
         return {
             "has_issues": len(issues) > 0,
             "issues": issues,
-            "citations_found": len(citations),
-            "unique_citations": len(set(citations))
+            "citations_found": len(all_citations),
+            "unique_citations": len(set(all_citations))
         }
     
     def verify_images(self, content: str, md_file_path: str) -> Dict[str, Any]:
@@ -424,11 +435,22 @@ class PaperVerifier:
     def verify_reference_count(self, content: str, min_references: int = 15) -> Dict[str, Any]:
         """检查引用数量是否符合学术论文标准"""
         
-        # 查找所有引用
+        # 查找所有引用（包括连续引用）
         citation_pattern = r'\[@([^\]]+)\]'
-        citations = re.findall(citation_pattern, content)
-        unique_citations = len(set(citations))
-        total_citations = len(citations)
+        citation_matches = re.findall(citation_pattern, content)
+        
+        # 解析连续引用，分割成单独的引用key
+        all_citations = []
+        for match in citation_matches:
+            # 分割连续引用 (用分号、逗号或@符号分隔)
+            keys = re.split(r'[;,]\s*@?|\s+@', match)
+            for key in keys:
+                key = key.strip().lstrip('@')  # 移除前导空格和@符号
+                if key:  # 非空key
+                    all_citations.append(key)
+        
+        unique_citations = len(set(all_citations))
+        total_citations = len(all_citations)
         
         issues = []
         warnings = []
